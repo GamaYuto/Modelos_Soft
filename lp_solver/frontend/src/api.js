@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://vigilant-eureka-vxqxjpw7xrwc5gv-8000.app.github.dev/',
   timeout: 10000,
 });
 

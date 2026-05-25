@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 
 from simplex import resolver_simplex
+from graphical_method import resolver_grafico
 
 
 class RestriccionInput(BaseModel):
@@ -23,12 +24,22 @@ class ProblemaInput(BaseModel):
     tipo: str = Field(..., description='Tipo de problema: "max" o "min"')
     objetivo: List[float] = Field(..., description='Vector de costos objetivo')
     restricciones: List[RestriccionInput] = Field(..., description='Lista de restricciones')
+    metodo: Optional[str] = Field('simplex', description='Método: "simplex" o "grafico" (solo para 2 variables)')
 
     @validator('tipo')
     def validar_tipo(cls, valor):
         valor_str = str(valor).strip().lower()
         if valor_str not in ('max', 'min'):
             raise ValueError('El tipo debe ser "max" o "min".')
+        return valor_str
+    
+    @validator('metodo')
+    def validar_metodo(cls, valor):
+        if valor is None:
+            return 'simplex'
+        valor_str = str(valor).strip().lower()
+        if valor_str not in ('simplex', 'grafico'):
+            raise ValueError('El método debe ser "simplex" o "grafico".')
         return valor_str
 
 
@@ -70,8 +81,21 @@ def solve(problema: ProblemaInput):
             [*restriccion.coeficientes, restriccion.sentido, restriccion.lado_derecho]
         )
 
+    # Seleccionar método
+    metodo = problema.metodo.lower() if problema.metodo else 'simplex'
+    
+    # Validar que el método gráfico solo se use con 2 variables
+    if metodo == 'grafico' and num_vars != 2:
+        raise HTTPException(
+            status_code=400,
+            detail='El método gráfico solo funciona con exactamente 2 variables.',
+        )
+
     try:
-        resultado = resolver_simplex(problema.tipo, problema.objetivo, restricciones_formato)
+        if metodo == 'grafico':
+            resultado = resolver_grafico(problema.tipo, problema.objetivo, restricciones_formato)
+        else:
+            resultado = resolver_simplex(problema.tipo, problema.objetivo, restricciones_formato)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:

@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   color-scheme: light;
@@ -14,7 +14,7 @@ html {
 }
 
 body {
-  @apply min-h-screen bg-gray-100 text-slate-900 antialiased;
+  @apply min-h-screen bg-slate-100 text-slate-900 antialiased;
 }
 
 * {
@@ -29,5 +29,5 @@ textarea {
 }
 
 ::selection {
-  @apply bg-sky-200 text-slate-900;
+  @apply bg-indigo-200 text-slate-900;
 }

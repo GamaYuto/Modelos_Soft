@@ -1,376 +1,301 @@
 import { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { solveLP } from './api';
-import { validarFormulario } from './utils/validaciones';
-import EjemplosBotones from './components/EjemplosBotones';
-import ResultadoPanel from './components/ResultadoPanel';
-import RestriccionCard from './components/RestriccionCard';
+import Header from './components/Header.jsx';
+import StepIndicator from './components/StepIndicator.jsx';
+import ModelConfig from './components/ModelConfig.jsx';
+import ObjectiveForm from './components/ObjectiveForm.jsx';
+import RestrictionsTable from './components/RestrictionsTable.jsx';
+import ModelPreview from './components/ModelPreview.jsx';
+import ModelSummary from './components/ModelSummary.jsx';
+import ResultsPanel from './components/ResultsPanel.jsx';
+import SimplexIterations from './components/SimplexIterations.jsx';
+import TestCases from './components/TestCases.jsx';
+import { TEST_CASES } from './data/testCases.js';
+import { solveLP } from './api.js';
+import {
+  buildSolverPayload,
+  hasErrors,
+  validateModelConfig,
+  validateObjective,
+  validateRestrictions,
+} from './utils/validators.js';
 
-const VARIABLE_SUBSCRIPTS = ['₁', '₂', '₃', '₄'];
-const DEFAULT_VARIABLES = 2;
-const MAX_RESTRICCIONES = 4;
+const INITIAL_CONFIG = {
+  tipo: 'max',
+  numVariables: 2,
+  numRestricciones: 2,
+  metodo: 'simplex',
+};
 
-const EJEMPLOS_RAPIDOS = [
-  {
-    name: 'Max simple',
-    tipo: 'max',
-    numVariables: 2,
-    objetivo: [3, 5],
-    restricciones: [
-      { coeficientes: [1, 0], sentido: '<=', lado_derecho: 4 },
-      { coeficientes: [0, 2], sentido: '<=', lado_derecho: 12 },
-      { coeficientes: [3, 2], sentido: '<=', lado_derecho: 18 },
-    ],
-  },
-  {
-    name: 'Min simple',
-    tipo: 'min',
-    numVariables: 2,
-    objetivo: [1, 1],
-    restricciones: [
-      { coeficientes: [1, 1], sentido: '>=', lado_derecho: 2 },
-      { coeficientes: [1, 0], sentido: '<=', lado_derecho: 1 },
-      { coeficientes: [0, 1], sentido: '<=', lado_derecho: 1 },
-    ],
-  },
-  {
-    name: 'Infactible',
-    tipo: 'max',
-    numVariables: 2,
-    objetivo: [1, 1],
-    restricciones: [
-      { coeficientes: [1, 1], sentido: '<=', lado_derecho: 1 },
-      { coeficientes: [1, 1], sentido: '>=', lado_derecho: 2 },
-    ],
-  },
-  {
-    name: 'No acotado',
-    tipo: 'max',
-    numVariables: 2,
-    objetivo: [1, 1],
-    restricciones: [
-      { coeficientes: [1, -1], sentido: '<=', lado_derecho: 1 },
-      { coeficientes: [1, 0], sentido: '>=', lado_derecho: 0 },
-      { coeficientes: [0, 1], sentido: '>=', lado_derecho: 0 },
-    ],
-  },
-  {
-    name: 'Múltiples sol.',
-    tipo: 'max',
-    numVariables: 2,
-    objetivo: [1, 1],
-    restricciones: [
-      { coeficientes: [1, 1], sentido: '<=', lado_derecho: 1 },
-      { coeficientes: [1, 0], sentido: '>=', lado_derecho: 0 },
-      { coeficientes: [0, 1], sentido: '>=', lado_derecho: 0 },
-    ],
-  },
-];
-
-const crearRestriccionVacia = (numVariables) => ({
+const buildEmptyRestriction = (numVariables) => ({
   coeficientes: Array.from({ length: numVariables }, () => '0'),
   sentido: '<=',
   lado_derecho: '0',
 });
 
-function App() {
-  const [tipo, setTipo] = useState('max');
-  const [numVariables, setNumVariables] = useState(DEFAULT_VARIABLES);
-  const [objetivo, setObjetivo] = useState(Array(DEFAULT_VARIABLES).fill('0'));
-  const [restricciones, setRestricciones] = useState([
-    crearRestriccionVacia(DEFAULT_VARIABLES),
-  ]);
+const buildEmptyObjective = (numVariables) => Array.from({ length: numVariables }, () => '0');
+
+export default function App() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [config, setConfig] = useState(INITIAL_CONFIG);
+  const [objective, setObjective] = useState(buildEmptyObjective(INITIAL_CONFIG.numVariables));
+  const [restrictions, setRestrictions] = useState(
+    Array.from({ length: INITIAL_CONFIG.numRestricciones }, () => buildEmptyRestriction(INITIAL_CONFIG.numVariables)),
+  );
+  const [validationErrors, setValidationErrors] = useState({});
+  const [backendError, setBackendError] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [selectedExample, setSelectedExample] = useState(null);
 
   useEffect(() => {
-    if (!selectedExample) return;
+    setObjective((prev) =>
+      Array.from({ length: config.numVariables }, (_, index) => prev[index] ?? '0'),
+    );
+  }, [config.numVariables]);
 
-    const timer = window.setTimeout(async () => {
-      try {
-        await handleResolver();
-      } finally {
-        setSelectedExample(null);
+  useEffect(() => {
+    setRestrictions((prev) => {
+      const next = prev.slice(0, config.numRestricciones);
+      while (next.length < config.numRestricciones) {
+        next.push(buildEmptyRestriction(config.numVariables));
       }
-    }, 250);
+      return next.map((restriction) => ({
+        ...restriction,
+        coeficientes: Array.from({ length: config.numVariables }, (_, index) => restriction.coeficientes[index] ?? '0'),
+      }));
+    });
+  }, [config.numRestricciones, config.numVariables]);
 
-    return () => window.clearTimeout(timer);
-  }, [selectedExample]);
+  useEffect(() => {
+    setBackendError('');
+    setValidationErrors({});
+    setResult(null);
+  }, [config, objective, restrictions]);
 
-  const manejarTipo = (value) => {
-    setTipo(value);
+  const handleConfigChange = (field, value) => {
+    setConfig((prev) => ({ ...prev, [field]: value }));
   };
 
-  const manejarCambioVariables = (event) => {
-    const next = Math.max(2, Math.min(4, Number(event.target.value)));
-    setNumVariables(next);
-    setObjetivo((prev) =>
-      Array.from({ length: next }, (_, index) => prev[index] ?? '0'),
-    );
-    setRestricciones((prev) =>
-      prev.map((restriccion) => ({
-        ...restriccion,
-        coeficientes: Array.from({ length: next }, (_, index) => restriccion.coeficientes[index] ?? '0'),
-      })),
-    );
-  };
-
-  const manejarCambioObjetivo = (index, value) => {
-    setObjetivo((prev) => {
+  const handleObjectiveChange = (index, value) => {
+    setObjective((prev) => {
       const next = [...prev];
       next[index] = value;
       return next;
     });
   };
 
-  const manejarCambioRestriccion = (index, campo, valor, coefIndex = null) => {
-    setRestricciones((prev) =>
-      prev.map((restriccion, fila) => {
-        if (fila !== index) return restriccion;
-        if (campo === 'coef') {
-          const coeficientes = [...restriccion.coeficientes];
-          coeficientes[coefIndex] = valor;
-          return { ...restriccion, coeficientes };
+  const handleRestrictionChange = (rowIndex, field, value, coefIndex = null) => {
+    setRestrictions((prev) =>
+      prev.map((restriction, index) => {
+        if (index !== rowIndex) return restriction;
+        if (field === 'coef') {
+          const coeficientes = [...restriction.coeficientes];
+          coeficientes[coefIndex] = value;
+          return { ...restriction, coeficientes };
         }
-        return { ...restriccion, [campo]: valor };
+        return { ...restriction, [field]: value };
       }),
     );
   };
 
-  const agregarRestriccion = () => {
-    if (restricciones.length >= MAX_RESTRICCIONES) {
-      toast.error('Solo puedes agregar hasta 4 restricciones.');
-      return;
-    }
-    setRestricciones((prev) => [...prev, crearRestriccionVacia(numVariables)]);
-  };
-
-  const eliminarRestriccion = (index) => {
-    if (restricciones.length <= 1) {
-      toast.error('Debe haber al menos una restricción.');
-      return;
-    }
-    setRestricciones((prev) => prev.filter((_, fila) => fila !== index));
-  };
-
-  const cargarEjemplo = (ejemplo) => {
-    setTipo(ejemplo.tipo);
-    setNumVariables(ejemplo.numVariables);
-    setObjetivo(ejemplo.objetivo.map(String));
-    setRestricciones(
-      ejemplo.restricciones.map((restriccion) => ({
-        coeficientes: restriccion.coeficientes.map(String),
-        sentido: restriccion.sentido,
-        lado_derecho: String(restriccion.lado_derecho),
-      })),
-    );
+  const handleTestCaseSelect = (testCase) => {
+    setConfig({
+      tipo: testCase.tipo,
+      numVariables: testCase.numVariables,
+      numRestricciones: testCase.numRestricciones,
+      metodo: testCase.metodo,
+    });
+    setObjective(testCase.objetivo);
+    setRestrictions(testCase.restricciones);
+    setCurrentStep(2);
+    setValidationErrors({});
+    setBackendError('');
     setResult(null);
-    setExpanded(false);
-    setSelectedExample(ejemplo);
   };
 
-  const handleResolver = async () => {
+  const handleAddRestriction = () => {
+    if (restrictions.length >= 4) return;
+    setRestrictions((prev) => [...prev, buildEmptyRestriction(config.numVariables)]);
+  };
+
+  const handleRemoveRestriction = (index) => {
+    if (restrictions.length <= 2) return;
+    setRestrictions((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+  };
+
+  const validateStep = (step) => {
+    if (step === 1) {
+      const errors = validateModelConfig(config);
+      setValidationErrors(errors);
+      return !hasErrors(errors);
+    }
+    if (step === 2) {
+      const errors = validateObjective(objective);
+      setValidationErrors(errors);
+      return !hasErrors(errors);
+    }
+    if (step === 3) {
+      const errors = validateRestrictions(restrictions, config.numVariables);
+      setValidationErrors(errors);
+      return !hasErrors(errors);
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
+    }
+  };
+
+  const handleBackStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async (event) => {
+    if (event) event.preventDefault();
+    const configErrors = validateModelConfig(config);
+    const objectiveErrors = validateObjective(objective);
+    const restrictionErrors = validateRestrictions(restrictions, config.numVariables);
+    const mergedErrors = { ...configErrors, ...objectiveErrors, ...restrictionErrors };
+
+    if (hasErrors(mergedErrors)) {
+      setValidationErrors(mergedErrors);
+      const nextStep = Object.keys(configErrors).length
+        ? 1
+        : Object.keys(objectiveErrors).length
+        ? 2
+        : Object.keys(restrictionErrors).length
+        ? 3
+        : currentStep;
+      setCurrentStep(nextStep);
+      return;
+    }
+
     setLoading(true);
+    setBackendError('');
+    setValidationErrors({});
     setResult(null);
-    setExpanded(false);
 
     try {
-      const payload = validarFormulario(tipo, objetivo, restricciones);
+      const payload = buildSolverPayload(config, objective, restrictions);
       const data = await solveLP(payload);
       setResult(data);
-      if (data.iteraciones?.length) {
-        setExpanded(true);
-      }
-      return data;
+      setCurrentStep(4);
     } catch (error) {
-      const message =
-        error.response?.data?.detail || error.message || 'Error de red al conectar con el backend.';
+      const message = error.response?.data?.detail || error.message || 'Error de red al conectar con el backend.';
+      setBackendError(message);
       toast.error(message);
-      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const manejarEnvio = async (event) => {
-    event.preventDefault();
-    try {
-      await handleResolver();
-    } catch (err) {
-      // El error ya se muestra con toast
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 py-6 sm:py-8">
       <Toaster position="top-right" />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <header className="overflow-hidden rounded-[2rem] bg-white p-8 shadow-xl">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-200 text-blue-700">+</span>
-                Solución Simplex
-              </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-                Solucionador de Programación Lineal
-              </h1>
-              <p className="mt-4 max-w-2xl text-base text-slate-600">
-                Ingresa los coeficientes de tu problema y recibe una solución clara, con estado, variables óptimas y iteraciones del Simplex.
-              </p>
-            </div>
-            <div className="rounded-3xl bg-slate-50 p-6 text-slate-700 shadow-inner">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Backend</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">http://localhost:8000</p>
-              <p className="mt-2 text-sm text-slate-500">Asegúrate de que el backend esté en ejecución.</p>
-            </div>
-          </div>
-        </header>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Header />
 
-        <EjemplosBotones examples={EJEMPLOS_RAPIDOS} onSelect={cargarEjemplo} />
+        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+          <div className="space-y-5">
+            <TestCases cases={TEST_CASES} onSelect={handleTestCaseSelect} />
+            <StepIndicator currentStep={currentStep} />
 
-        <form onSubmit={manejarEnvio} className="mt-8 grid gap-8 xl:grid-cols-[1.35fr_0.95fr]">
-          <div className="space-y-6">
-            <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Entrada</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">Parámetros del problema</h2>
-                  <p className="mt-2 text-sm text-slate-500">Configura el tipo de optimización, variables y la función objetivo.</p>
-                </div>
+            {backendError && (
+              <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 shadow-sm">
+                <p className="font-semibold">Error del backend</p>
+                <p className="mt-1.5">{backendError}</p>
               </div>
+            )}
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-medium text-slate-600">Tipo de problema</p>
-                  <div className="mt-4 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => manejarTipo('max')}
-                      className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tipo === 'max' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'}`}
-                    >
-                      Maximizar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => manejarTipo('min')}
-                      className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tipo === 'min' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'}`}
-                    >
-                      Minimizar
-                    </button>
-                  </div>
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {currentStep === 1 && (
+                <ModelConfig config={config} onChange={handleConfigChange} errors={validationErrors} />
+              )}
 
-                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                  <label className="text-sm font-medium text-slate-600">Número de variables</label>
-                  <input
-                    type="number"
-                    min="2"
-                    max="4"
-                    step="1"
-                    value={numVariables}
-                    onChange={manejarCambioVariables}
-                    className="mt-4 w-full rounded-[1.5rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                  />
-                </div>
-              </div>
+              {currentStep === 2 && (
+                <ObjectiveForm
+                  objective={objective}
+                  numVariables={config.numVariables}
+                  onChange={handleObjectiveChange}
+                  errors={validationErrors}
+                  tipo={config.tipo}
+                />
+              )}
 
-              <div className="mt-8 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+              {currentStep === 3 && (
+                <RestrictionsTable
+                  restrictions={restrictions}
+                  numVariables={config.numVariables}
+                  onChange={handleRestrictionChange}
+                  errors={validationErrors}
+                />
+              )}
+
+              {currentStep === 4 && (
+                <ModelSummary
+                  tipo={config.tipo}
+                  numVariables={config.numVariables}
+                  objetivo={objective}
+                  restricciones={restrictions}
+                  metodo={config.metodo}
+                />
+              )}
+
+              <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-lg">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Función objetivo</h3>
-                    <p className="text-sm text-slate-500">Ingresa un coeficiente para cada variable.</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleBackStep}
+                      disabled={currentStep === 1}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Volver
+                    </button>
+                    {currentStep < 4 && (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      >
+                        Siguiente
+                      </button>
+                    )}
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">Z =</span>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-sky-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-700 hover:to-sky-600 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300"
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="mr-2 h-5 w-5 animate-spin text-white" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25" />
+                          <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
+                        </svg>
+                        Resolviendo...
+                      </>
+                    ) : (
+                      'Resolver modelo'
+                    )}
+                  </button>
                 </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  {objetivo.map((valor, index) => (
-                    <label key={index} className="flex flex-col gap-2">
-                      <span className="text-sm font-medium text-slate-700">x{VARIABLE_SUBSCRIPTS[index]}</span>
-                      <input
-                        type="number"
-                        step="any"
-                        value={valor}
-                        onChange={(event) => manejarCambioObjetivo(index, event.target.value)}
-                        className="rounded-[1.5rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Restricciones</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">Define la matriz de restricciones</h2>
-                  <p className="mt-2 text-sm text-slate-500">Cada restricción debe tener el mismo número de coeficientes que variables.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={agregarRestriccion}
-                  disabled={restricciones.length >= MAX_RESTRICCIONES}
-                  className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  + Agregar restricción
-                </button>
-              </div>
-
-              <div className="mt-6 space-y-4">
-                {restricciones.map((restriccion, index) => (
-                  <RestriccionCard
-                    key={index}
-                    index={index}
-                    restriccion={restriccion}
-                    numVariables={numVariables}
-                    onChange={manejarCambioRestriccion}
-                    onRemove={eliminarRestriccion}
-                    disableRemove={restricciones.length <= 1}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <div className="rounded-[1.75rem] bg-white p-6 shadow-lg">
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-6 py-4 text-sm font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-sky-600 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300"
-              >
-                {loading ? (
-                  <>
-                    <svg className="mr-2 h-5 w-5 animate-spin text-white" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25" />
-                      <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
-                    </svg>
-                    Resolviendo...
-                  </>
-                ) : (
-                  'Resolver'
-                )}
-              </button>
-              <p className="mt-4 text-sm text-slate-500">
-                El backend debe estar activo en <strong>http://localhost:8000</strong> para resolver el problema.
-              </p>
-            </div>
+              </section>
+            </form>
           </div>
 
-          <aside className="space-y-6">
-            <ResultadoPanel
-              result={result}
-              loading={loading}
-              expanded={expanded}
-              onToggle={() => setExpanded((prev) => !prev)}
-            />
+          <aside className="xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-auto">
+            <div className="space-y-5">
+              <ResultsPanel result={result} />
+              <ModelPreview config={config} objective={objective} restrictions={restrictions} />
+              <SimplexIterations iteraciones={result?.iteraciones} status={result?.status} />
+            </div>
           </aside>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
-
-export default App;
