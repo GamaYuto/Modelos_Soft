@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Maximización solución única",
+    "tipo": "max",
+    "objetivo": [3, 5],
+    "restricciones": [
+      {"coeficientes": [1, 0], "sentido": "<=", "lado_derecho": 4},
+      {"coeficientes": [0, 2], "sentido": "<=", "lado_derecho": 12},
+      {"coeficientes": [3, 2], "sentido": "<=", "lado_derecho": 18}
+    ],
+    "expected_status": "optimal"
+  },
+  {
+    "name": "Minimización solución única",
+    "tipo": "min",
+    "objetivo": [1, 1],
+    "restricciones": [
+      {"coeficientes": [1, 1], "sentido": ">=", "lado_derecho": 2},
+      {"coeficientes": [1, 0], "sentido": "<=", "lado_derecho": 1},
+      {"coeficientes": [0, 1], "sentido": "<=", "lado_derecho": 1}
+    ],
+    "expected_status": "optimal"
+  },
+  {
+    "name": "Infactible",
+    "tipo": "max",
+    "objetivo": [1, 1],
+    "restricciones": [
+      {"coeficientes": [1, 1], "sentido": "<=", "lado_derecho": 1},
+      {"coeficientes": [1, 1], "sentido": ">=", "lado_derecho": 2}
+    ],
+    "expected_status": "infeasible"
+  },
+  {
+    "name": "No acotado",
+    "tipo": "max",
+    "objetivo": [1, 1],
+    "restricciones": [
+      {"coeficientes": [1, -1], "sentido": "<=", "lado_derecho": 1},
+      {"coeficientes": [1, 0], "sentido": ">=", "lado_derecho": 0},
+      {"coeficientes": [0, 1], "sentido": ">=", "lado_derecho": 0}
+    ],
+    "expected_status": "unbounded"
+  },
+  {
+    "name": "Múltiples soluciones",
+    "tipo": "max",
+    "objetivo": [1, 1],
+    "restricciones": [
+      {"coeficientes": [1, 1], "sentido": "<=", "lado_derecho": 1},
+      {"coeficientes": [1, 0], "sentido": ">=", "lado_derecho": 0},
+      {"coeficientes": [0, 1], "sentido": ">=", "lado_derecho": 0}
+    ],
+    "expected_status": "optimal"
+  }
+]
