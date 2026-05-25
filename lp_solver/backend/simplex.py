@@ -163,14 +163,29 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
         basic_vars[fila_pivote] = col_pivote
 
     tablas = []
+    iteraciones = []
     status = 'optimal'
     conclusion = 'Se encontró una solución óptima.'
+    multiple_solutions = False
+
+    def _tabla_a_matriz(tableau, rhs, row_names, col_names, reducidos=None):
+        header = ['Base', *col_names, 'RHS']
+        rows = []
+        for i, fila in enumerate(tableau):
+            rows.append([row_names[i], *[float(v) for v in fila], float(rhs[i])])
+        if reducidos is not None:
+            rows.append(['Reducción', *[float(v) for v in reducidos], None])
+        return [header] + rows
 
     for iteracion in range(100):
         reducidos, valor_objetivo = _calcular_reducidos_y_objetivo()
         fila_base = [col_names[idx] for idx in basic_vars]
         tabla_actual = imprimir_tabla(tableau, rhs, fila_base, col_names, objetivo=valor_objetivo, reducidos=reducidos)
         tablas.append(tabla_actual)
+        iteraciones.append({
+            'descripcion': f'Iteración {iteracion + 1}',
+            'tabla': _tabla_a_matriz(tableau, rhs, fila_base, col_names, reducidos),
+        })
         if debug:
             print(f"\nIteración {iteracion + 1}")
             print(tabla_actual)
@@ -204,6 +219,10 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
 
     reducidos_final, valor_objetivo_final = _calcular_reducidos_y_objetivo()
     tablas.append(imprimir_tabla(tableau, rhs, [col_names[idx] for idx in basic_vars], col_names, objetivo=valor_objetivo_final, reducidos=reducidos_final))
+    iteraciones.append({
+        'descripcion': 'Tabla final',
+        'tabla': _tabla_a_matriz(tableau, rhs, [col_names[idx] for idx in basic_vars], col_names, reducidos_final),
+    })
 
     if status == 'optimal':
         arti_en_base = [i for i, var in enumerate(basic_vars) if var in artificial_indices and rhs[i] > TOL]
@@ -223,6 +242,7 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
                 break
         if multiples:
             conclusion = 'Se encontró una solución óptima y hay múltiples soluciones alternativas.'
+            multiple_solutions = True
 
     variables_opt = [0.0] * num_vars
     for i, var in enumerate(basic_vars):
@@ -239,4 +259,6 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
         'valor_optimo': round(valor_original, 9) if valor_original is not None else None,
         'conclusion': conclusion,
         'tablas': tablas,
+        'iteraciones': iteraciones,
+        'multiple_solutions': multiple_solutions,
     }

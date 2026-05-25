@@ -1,20 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { solveLP } from './api';
-import Restricciones from './Restricciones';
+import { validarFormulario } from './utils/validaciones';
+import EjemplosBotones from './components/EjemplosBotones';
+import ResultadoPanel from './components/ResultadoPanel';
+import RestriccionCard from './components/RestriccionCard';
 
+const VARIABLE_SUBSCRIPTS = ['₁', '₂', '₃', '₄'];
 const DEFAULT_VARIABLES = 2;
-const VARIABLE_OPTIONS = [2, 3, 4];
 const MAX_RESTRICCIONES = 4;
-
-const crearRestriccionVacia = (numVariables) => ({
-  coeficientes: Array.from({ length: numVariables }, () => ''),
-  sentido: '<=',
-  lado_derecho: '',
-});
 
 const EJEMPLOS_RAPIDOS = [
   {
-    name: 'Maximización solución única',
+    name: 'Max simple',
     tipo: 'max',
     numVariables: 2,
     objetivo: [3, 5],
@@ -25,7 +23,7 @@ const EJEMPLOS_RAPIDOS = [
     ],
   },
   {
-    name: 'Minimización solución única',
+    name: 'Min simple',
     tipo: 'min',
     numVariables: 2,
     objetivo: [1, 1],
@@ -57,7 +55,7 @@ const EJEMPLOS_RAPIDOS = [
     ],
   },
   {
-    name: 'Múltiples soluciones',
+    name: 'Múltiples sol.',
     tipo: 'max',
     numVariables: 2,
     objetivo: [1, 1],
@@ -69,28 +67,52 @@ const EJEMPLOS_RAPIDOS = [
   },
 ];
 
+const crearRestriccionVacia = (numVariables) => ({
+  coeficientes: Array.from({ length: numVariables }, () => '0'),
+  sentido: '<=',
+  lado_derecho: '0',
+});
+
 function App() {
   const [tipo, setTipo] = useState('max');
   const [numVariables, setNumVariables] = useState(DEFAULT_VARIABLES);
-  const [objetivo, setObjetivo] = useState(Array(DEFAULT_VARIABLES).fill(''));
+  const [objetivo, setObjetivo] = useState(Array(DEFAULT_VARIABLES).fill('0'));
   const [restricciones, setRestricciones] = useState([
     crearRestriccionVacia(DEFAULT_VARIABLES),
   ]);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [selectedExample, setSelectedExample] = useState(null);
+
+  useEffect(() => {
+    if (!selectedExample) return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        await handleResolver();
+      } finally {
+        setSelectedExample(null);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedExample]);
+
+  const manejarTipo = (value) => {
+    setTipo(value);
+  };
 
   const manejarCambioVariables = (event) => {
-    const next = Number(event.target.value);
+    const next = Math.max(2, Math.min(4, Number(event.target.value)));
     setNumVariables(next);
     setObjetivo((prev) =>
-      Array.from({ length: next }, (_, index) => prev[index] ?? ''),
+      Array.from({ length: next }, (_, index) => prev[index] ?? '0'),
     );
     setRestricciones((prev) =>
       prev.map((restriccion) => ({
         ...restriccion,
-        coeficientes: Array.from({ length: next }, (_, index) => restriccion.coeficientes[index] ?? ''),
+        coeficientes: Array.from({ length: next }, (_, index) => restriccion.coeficientes[index] ?? '0'),
       })),
     );
   };
@@ -118,12 +140,18 @@ function App() {
   };
 
   const agregarRestriccion = () => {
-    if (restricciones.length >= MAX_RESTRICCIONES) return;
+    if (restricciones.length >= MAX_RESTRICCIONES) {
+      toast.error('Solo puedes agregar hasta 4 restricciones.');
+      return;
+    }
     setRestricciones((prev) => [...prev, crearRestriccionVacia(numVariables)]);
   };
 
   const eliminarRestriccion = (index) => {
-    if (restricciones.length <= 1) return;
+    if (restricciones.length <= 1) {
+      toast.error('Debe haber al menos una restricción.');
+      return;
+    }
     setRestricciones((prev) => prev.filter((_, fila) => fila !== index));
   };
 
@@ -139,129 +167,135 @@ function App() {
       })),
     );
     setResult(null);
-    setError(null);
     setExpanded(false);
+    setSelectedExample(ejemplo);
   };
 
-  const validarNumero = (valor) => {
-    const numero = Number(valor);
-    if (Number.isNaN(numero)) {
-      throw new Error('Todos los coeficientes y lados derechos deben ser números.');
-    }
-    return numero;
-  };
-
-  const manejarEnvio = async (event) => {
-    event.preventDefault();
+  const handleResolver = async () => {
     setLoading(true);
-    setError(null);
     setResult(null);
     setExpanded(false);
 
     try {
-      const payload = {
-        tipo,
-        objetivo: objetivo.map(validarNumero),
-        restricciones: restricciones.map((restriccion) => ({
-          coeficientes: restriccion.coeficientes.map(validarNumero),
-          sentido: restriccion.sentido,
-          lado_derecho: validarNumero(restriccion.lado_derecho),
-        })),
-      };
-
+      const payload = validarFormulario(tipo, objetivo, restricciones);
       const data = await solveLP(payload);
       setResult(data);
-      if (data.tablas?.length || data.iteraciones?.length) {
+      if (data.iteraciones?.length) {
         setExpanded(true);
       }
-    } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Error de red al conectar con el backend.');
+      return data;
+    } catch (error) {
+      const message =
+        error.response?.data?.detail || error.message || 'Error de red al conectar con el backend.';
+      toast.error(message);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const tablas = result?.tablas ?? result?.iteraciones ?? [];
+  const manejarEnvio = async (event) => {
+    event.preventDefault();
+    try {
+      await handleResolver();
+    } catch (err) {
+      // El error ya se muestra con toast
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="rounded-3xl bg-white p-8 shadow-lg">
-          <h1 className="text-3xl font-bold text-slate-900">Solucionador de Programación Lineal - Método Simplex</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Ingresa el problema de optimización y resuélvelo contra el backend FastAPI.
-          </p>
-        </header>
-
-        <section className="rounded-3xl bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-gray-100 py-10">
+      <Toaster position="top-right" />
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <header className="overflow-hidden rounded-[2rem] bg-white p-8 shadow-xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Ejemplos rápidos</h2>
-              <p className="text-sm text-slate-500">Carga un caso de prueba con un clic.</p>
+              <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-200 text-blue-700">+</span>
+                Solución Simplex
+              </p>
+              <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+                Solucionador de Programación Lineal
+              </h1>
+              <p className="mt-4 max-w-2xl text-base text-slate-600">
+                Ingresa los coeficientes de tu problema y recibe una solución clara, con estado, variables óptimas y iteraciones del Simplex.
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 p-6 text-slate-700 shadow-inner">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Backend</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">http://localhost:8000</p>
+              <p className="mt-2 text-sm text-slate-500">Asegúrate de que el backend esté en ejecución.</p>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {EJEMPLOS_RAPIDOS.map((ejemplo) => (
-              <button
-                key={ejemplo.name}
-                type="button"
-                onClick={() => cargarEjemplo(ejemplo)}
-                className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-100"
-              >
-                {ejemplo.name}
-              </button>
-            ))}
-          </div>
-        </section>
+        </header>
 
-        <form onSubmit={manejarEnvio} className="grid gap-8 lg:grid-cols-[1.3fr_0.9fr]">
+        <EjemplosBotones examples={EJEMPLOS_RAPIDOS} onSelect={cargarEjemplo} />
+
+        <form onSubmit={manejarEnvio} className="mt-8 grid gap-8 xl:grid-cols-[1.35fr_0.95fr]">
           <div className="space-y-6">
-            <section className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Parámetros del problema</h2>
-              <div className="mt-6 grid gap-6 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Tipo de problema</span>
-                  <select
-                    value={tipo}
-                    onChange={(event) => setTipo(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                  >
-                    <option value="max">Maximizar</option>
-                    <option value="min">Minimizar</option>
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">Número de variables</span>
-                  <select
-                    value={numVariables}
-                    onChange={manejarCambioVariables}
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                  >
-                    {VARIABLE_OPTIONS.map((opcion) => (
-                      <option key={opcion} value={opcion}>
-                        {opcion}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Entrada</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">Parámetros del problema</h2>
+                  <p className="mt-2 text-sm text-slate-500">Configura el tipo de optimización, variables y la función objetivo.</p>
+                </div>
               </div>
 
-              <div className="mt-8 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="text-lg font-semibold text-slate-900">Función objetivo</h3>
-                  <p className="text-sm text-slate-500">Ingrese los coeficientes</p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-medium text-slate-600">Tipo de problema</p>
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => manejarTipo('max')}
+                      className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tipo === 'max' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'}`}
+                    >
+                      Maximizar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => manejarTipo('min')}
+                      className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tipo === 'min' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'}`}
+                    >
+                      Minimizar
+                    </button>
+                  </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                  <label className="text-sm font-medium text-slate-600">Número de variables</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="4"
+                    step="1"
+                    value={numVariables}
+                    onChange={manejarCambioVariables}
+                    className="mt-4 w-full rounded-[1.5rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Función objetivo</h3>
+                    <p className="text-sm text-slate-500">Ingresa un coeficiente para cada variable.</p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">Z =</span>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {objetivo.map((valor, index) => (
-                    <label key={index} className="block">
-                      <span className="text-sm font-medium text-slate-700">x{index + 1}</span>
+                    <label key={index} className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-slate-700">x{VARIABLE_SUBSCRIPTS[index]}</span>
                       <input
                         type="number"
                         step="any"
                         value={valor}
                         onChange={(event) => manejarCambioObjetivo(index, event.target.value)}
-                        className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                        className="rounded-[1.5rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500"
                       />
                     </label>
                   ))}
@@ -269,103 +303,69 @@ function App() {
               </div>
             </section>
 
-            <Restricciones
-              restricciones={restricciones}
-              numVariables={numVariables}
-              onChange={manejarCambioRestriccion}
-              onAdd={agregarRestriccion}
-              onRemove={eliminarRestriccion}
-            />
+            <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Restricciones</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">Define la matriz de restricciones</h2>
+                  <p className="mt-2 text-sm text-slate-500">Cada restricción debe tener el mismo número de coeficientes que variables.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={agregarRestriccion}
+                  disabled={restricciones.length >= MAX_RESTRICCIONES}
+                  className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  + Agregar restricción
+                </button>
+              </div>
 
-            <div className="flex flex-col gap-4 rounded-3xl bg-white p-6 text-slate-700 shadow-sm">
+              <div className="mt-6 space-y-4">
+                {restricciones.map((restriccion, index) => (
+                  <RestriccionCard
+                    key={index}
+                    index={index}
+                    restriccion={restriccion}
+                    numVariables={numVariables}
+                    onChange={manejarCambioRestriccion}
+                    onRemove={eliminarRestriccion}
+                    disableRemove={restricciones.length <= 1}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <div className="rounded-[1.75rem] bg-white p-6 shadow-lg">
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center rounded-3xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-6 py-4 text-sm font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-sky-600 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300"
               >
-                {loading ? 'Resolver...' : 'Resolver'}
+                {loading ? (
+                  <>
+                    <svg className="mr-2 h-5 w-5 animate-spin text-white" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25" />
+                      <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
+                    </svg>
+                    Resolviendo...
+                  </>
+                ) : (
+                  'Resolver'
+                )}
               </button>
-              <p className="text-sm text-slate-500">
+              <p className="mt-4 text-sm text-slate-500">
                 El backend debe estar activo en <strong>http://localhost:8000</strong> para resolver el problema.
               </p>
             </div>
           </div>
 
           <aside className="space-y-6">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Resultados</h2>
-              {!result && !error && (
-                <p className="mt-4 text-sm text-slate-500">Aún no hay resultados. Completa el formulario y presiona Resolver.</p>
-              )}
-              {error && (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-                  <p className="font-semibold">Error</p>
-                  <p>{error}</p>
-                </div>
-              )}
-              {result && (
-                <div className="mt-4 space-y-4">
-                  <div className={result.status === 'optimal' ? 'rounded-2xl bg-emerald-50 p-4 text-emerald-900' : 'rounded-2xl bg-amber-50 p-4 text-amber-900'}>
-                    <p className="font-semibold">Status:</p>
-                    <p>{result.status}</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-700">Conclusión</p>
-                    <p className="mt-2 text-sm text-slate-600">{result.conclusion}</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-700">Valor óptimo</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">{result.valor_optimo ?? 'N/A'}</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-700">Variables óptimas</p>
-                    <div className="mt-4 overflow-x-auto">
-                      <table className="w-full text-left text-sm text-slate-700">
-                        <thead>
-                          <tr>
-                            <th className="border-b border-slate-200 px-3 py-2">Variable</th>
-                            <th className="border-b border-slate-200 px-3 py-2">Valor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {result.variables_opt.map((valor, index) => (
-                            <tr key={index} className="odd:bg-white even:bg-slate-100">
-                              <td className="border-b border-slate-200 px-3 py-2">x{index + 1}</td>
-                              <td className="border-b border-slate-200 px-3 py-2">{valor}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {tablas.length > 0 && (
-                    <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                      <button
-                        type="button"
-                        onClick={() => setExpanded((prev) => !prev)}
-                        className="w-full rounded-3xl border border-slate-300 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
-                      >
-                        {expanded ? 'Ocultar tablas del Simplex' : 'Ver tablas del Simplex'}
-                      </button>
-                      {expanded && (
-                        <div className="mt-4 space-y-4">
-                          {tablas.map((tabla, index) => (
-                            <div key={index} className="overflow-x-auto rounded-3xl bg-slate-950 p-4 text-slate-100">
-                              <p className="mb-3 text-sm font-semibold">Iteración {index + 1}</p>
-                              <pre className="whitespace-pre-wrap text-[0.85rem] leading-relaxed">{tabla}</pre>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ResultadoPanel
+              result={result}
+              loading={loading}
+              expanded={expanded}
+              onToggle={() => setExpanded((prev) => !prev)}
+            />
           </aside>
         </form>
       </div>

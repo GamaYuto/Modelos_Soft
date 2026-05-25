@@ -1,4 +1,4 @@
-export default function Restricciones({
+export default function RestriccionesList({
   restricciones,
   numVariables,
   onChange,
