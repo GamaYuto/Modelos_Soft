@@ -69,152 +69,153 @@ export default function ResultsPanel({ result }) {
   }
 
   return (
-    <section className="sticky top-8 space-y-0 max-h-[calc(100vh-120px)] overflow-hidden flex flex-col rounded-xl shadow-xl">
-      {/* Resultado óptimo muy dramático */}
-      <div className="overflow-hidden rounded-t-xl border border-b-0 border-slate-800 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl flex-shrink-0">
-        <div className="px-6 py-8">
-          <div className="flex items-center justify-between gap-3">
-            <span className={clsx('inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg', config.badge)}>
-              <Icon className="h-6 w-6" />
-            </span>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">{config.label}</p>
-          </div>
-          
-          {/* Z = valor muy prominente */}
-          <div className="mt-6 mb-2">
-            <p className="text-sm font-medium text-slate-400">Valor óptimo</p>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-4xl font-black text-white">Z =</span>
-              <span className="font-mono text-6xl font-black tracking-tight text-white">
-                {result.valor_optimo !== null && result.valor_optimo !== undefined ? result.valor_optimo.toFixed(0) : 'N/A'}
+    <aside className="xl:sticky xl:top-8 self-start w-full">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-lg">
+          <div className="px-6 py-8">
+            <div className="flex items-center justify-between gap-3">
+              <span className={clsx('inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg', config.badge)}>
+                <Icon className="h-6 w-6" />
               </span>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">{config.label}</p>
             </div>
-          </div>
+            
+            {/* Z = valor muy prominente */}
+            <div className="mt-6 mb-2">
+              <p className="text-sm font-medium text-slate-400">Valor óptimo</p>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-4xl font-black text-white">Z =</span>
+                <span className="font-mono text-6xl font-black tracking-tight text-white">
+                  {result.valor_optimo !== null && result.valor_optimo !== undefined ? result.valor_optimo.toFixed(0) : 'N/A'}
+                </span>
+              </div>
+            </div>
 
-          {/* Variables óptimas debajo */}
-          <div className="mt-5 space-y-1 font-mono text-sm">
-            {variables.map((valor, index) => (
-              <p key={index} className="text-slate-300">
-                x<sub className="text-xs">{index + 1}</sub>
-                <span className="mx-2 text-slate-500">=</span>
-                <span className="font-semibold text-emerald-300">{typeof valor === 'number' ? valor.toFixed(2) : valor}</span>
-              </p>
+            {/* Variables óptimas debajo */}
+            <div className="mt-5 space-y-1 font-mono text-sm">
+              {variables.map((valor, index) => (
+                <p key={index} className="text-slate-300">
+                  x<sub className="text-xs">{index + 1}</sub>
+                  <span className="mx-2 text-slate-500">=</span>
+                  <span className="font-semibold text-emerald-300">{typeof valor === 'number' ? valor.toFixed(2) : valor}</span>
+                </p>
+              ))}
+            </div>
+
+            {hasMultiple && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200">
+                <Sparkles className="h-3 w-3" /> Múltiples soluciones
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sistema de tabs */}
+        <div className="border-b border-slate-200 bg-white">
+          <div className="flex overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition',
+                  activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <span className="text-base">{tab.icon}</span>
+                {tab.label}
+              </button>
             ))}
           </div>
+        </div>
 
-          {hasMultiple && (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200">
-              <Sparkles className="h-3 w-3" /> Múltiples soluciones
+        {/* Contenido del tab activo - flujo natural sin restricciones */}
+        <div className="p-4">
+          {/* TAB: RESUMEN */}
+          {activeTab === 'resumen' && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Información del problema</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-slate-50 p-3">
+                    <p className="text-xs text-slate-600">Tipo</p>
+                    <p className="mt-1 font-mono font-semibold text-slate-900">{method === 'grafico' || method === 'graphical' ? 'Gráfico' : 'Simplex'}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-3">
+                    <p className="text-xs text-slate-600">Estado</p>
+                    <p className="mt-1 font-semibold text-slate-900">{config.label}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Conclusión</p>
+                <p className="rounded-lg bg-blue-50 p-3 text-sm leading-relaxed text-slate-700">
+                  {statusKey === 'optimal'
+                    ? `Solución óptima${hasMultiple ? ' múltiple' : ' única'} encontrada. El modelo está correctamente formulado y acotado.`
+                    : statusKey === 'infeasible'
+                    ? 'No existe región factible. Revisa las restricciones: pueden ser contradictorias.'
+                    : 'Problema no acotado. La solución óptima tiende a infinito.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: GRÁFICA */}
+          {activeTab === 'grafica' && graphData && isGraphicalMethod && (
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Visualización 2D de la región factible</p>
+              <GraphicalPlot graph={graphData} solution={result?.solucion} />
+            </div>
+          )}
+
+          {/* TAB: MODELO */}
+          {activeTab === 'modelo' && (hasObjective || hasConstraints) && (
+            <div className="space-y-4">
+              {hasObjective && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Función objetivo</p>
+                  <p className="rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-900">
+                    {result.objetivo ? result.objetivo.map((coef, i) => `${coef}x${i + 1}`).join(' + ') : 'N/A'}
+                  </p>
+                </div>
+              )}
+
+              {hasConstraints && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Restricciones</p>
+                  <div className="space-y-1">
+                    {result.restricciones.map((restriccion, idx) => (
+                      <p key={idx} className="rounded-lg bg-slate-50 p-2 font-mono text-sm text-slate-900">
+                        {restriccion.coeficientes?.map((coef, i) => `${coef}x${i + 1}`).join(' + ') || `R${idx + 1}`}
+                        <span className="mx-2 text-slate-500">{restriccion.sentido || '='}</span>
+                        {restriccion.lado_derecho}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: ITERACIONES */}
+          {activeTab === 'iteraciones' && hasIterations && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Historial del algoritmo Simplex</p>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {result.iteraciones.map((iter, idx) => (
+                  <div key={idx} className="rounded-lg bg-slate-50 p-3 text-xs font-mono text-slate-900">
+                    <p className="font-semibold text-slate-700">Iteración {idx}</p>
+                    <p className="mt-1 text-slate-600">{JSON.stringify(iter).substring(0, 100)}...</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Sistema de tabs */}
-      <div className="border-b border-slate-200 bg-white flex-shrink-0">
-        <div className="flex overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={clsx(
-                'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition',
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <span className="text-base">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contenido del tab activo - con scroll interno */}
-      <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white p-4 shadow-sm overflow-y-auto flex-1">
-        {/* TAB: RESUMEN */}
-        {activeTab === 'resumen' && (
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Información del problema</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-600">Tipo</p>
-                  <p className="mt-1 font-mono font-semibold text-slate-900">{method === 'grafico' || method === 'graphical' ? 'Gráfico' : 'Simplex'}</p>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-600">Estado</p>
-                  <p className="mt-1 font-semibold text-slate-900">{config.label}</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Conclusión</p>
-              <p className="rounded-lg bg-blue-50 p-3 text-sm leading-relaxed text-slate-700">
-                {statusKey === 'optimal'
-                  ? `Solución óptima${hasMultiple ? ' múltiple' : ' única'} encontrada. El modelo está correctamente formulado y acotado.`
-                  : statusKey === 'infeasible'
-                  ? 'No existe región factible. Revisa las restricciones: pueden ser contradictorias.'
-                  : 'Problema no acotado. La solución óptima tiende a infinito.'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: GRÁFICA */}
-        {activeTab === 'grafica' && graphData && isGraphicalMethod && (
-          <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Visualización 2D de la región factible</p>
-            <GraphicalPlot graph={graphData} solution={result?.solucion} />
-          </div>
-        )}
-
-        {/* TAB: MODELO */}
-        {activeTab === 'modelo' && (hasObjective || hasConstraints) && (
-          <div className="space-y-4">
-            {hasObjective && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Función objetivo</p>
-                <p className="rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-900">
-                  {result.objetivo ? result.objetivo.map((coef, i) => `${coef}x${i + 1}`).join(' + ') : 'N/A'}
-                </p>
-              </div>
-            )}
-
-            {hasConstraints && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Restricciones</p>
-                <div className="space-y-1">
-                  {result.restricciones.map((restriccion, idx) => (
-                    <p key={idx} className="rounded-lg bg-slate-50 p-2 font-mono text-sm text-slate-900">
-                      {restriccion.coeficientes?.map((coef, i) => `${coef}x${i + 1}`).join(' + ') || `R${idx + 1}`}
-                      <span className="mx-2 text-slate-500">{restriccion.sentido || '='}</span>
-                      {restriccion.lado_derecho}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: ITERACIONES */}
-        {activeTab === 'iteraciones' && hasIterations && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Historial del algoritmo Simplex</p>
-            <div className="space-y-2">
-              {result.iteraciones.map((iter, idx) => (
-                <div key={idx} className="rounded-lg bg-slate-50 p-3 text-xs font-mono text-slate-900">
-                  <p className="font-semibold text-slate-700">Iteración {idx}</p>
-                  <p className="mt-1 text-slate-600">{JSON.stringify(iter).substring(0, 100)}...</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+    </aside>
   );
 }

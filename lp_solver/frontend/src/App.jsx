@@ -287,12 +287,10 @@ export default function App() {
             </form>
           </div>
 
-          <aside className="xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-auto">
-            <div className="space-y-5">
-              <ResultsPanel result={result} />
-              <ModelPreview config={config} objective={objective} restrictions={restrictions} />
-              <SimplexIterations iteraciones={result?.iteraciones} status={result?.status} />
-            </div>
+          <aside className="space-y-5">
+            <ResultsPanel result={result} />
+            <ModelPreview config={config} objective={objective} restrictions={restrictions} />
+            <SimplexIterations iteraciones={result?.iteraciones} status={result?.status} />
           </aside>
         </div>
       </div>
