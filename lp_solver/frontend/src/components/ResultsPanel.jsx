@@ -21,11 +21,17 @@ const STATUS_MAP = {
   },
 };
 
+/**
+ * Formatea una variable de decisión para mostrarla en el panel de resultados.
+ */
 function formatVariableLine(index, value) {
   const formatted = typeof value === 'number' ? value.toFixed(2) : value;
   return `x${index + 1} = ${formatted}`;
 }
 
+/**
+ * Muestra estado, solución óptima y salidas relevantes del backend.
+ */
 export default function ResultsPanel({ result }) {
   const [activeTab, setActiveTab] = useState('resumen');
 

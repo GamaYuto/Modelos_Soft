@@ -13,11 +13,13 @@ SUGERENCIAS = {
 
 
 def cargar_casos():
+    """Carga desde JSON los casos de prueba del endpoint /solve."""
     with open(CASES_PATH, 'r', encoding='utf-8') as handle:
         return json.load(handle)
 
 
 def run_test(caso):
+    """Ejecuta un caso contra la API y compara estado obtenido vs esperado."""
     print(f"\n--- Caso: {caso['name']} ---")
     try:
         respuesta = requests.post(f'{BASE_URL}/solve', json={
@@ -52,6 +54,7 @@ def run_test(caso):
 
 
 def main():
+    """Corre toda la batería de casos y muestra un resumen final."""
     casos = cargar_casos()
     resultados = [run_test(caso) for caso in casos]
     exitos = sum(1 for resultado in resultados if resultado)

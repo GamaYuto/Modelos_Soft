@@ -1,5 +1,8 @@
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
+/**
+ * Resume el modelo final (objetivo, restricciones y método) previo al envío.
+ */
 export default function ModelSummary({ tipo, numVariables, objetivo, restricciones, metodo }) {
   // Validar que el modelo sea válido
   const hasValidObjetivo = objetivo && objetivo.some(c => c !== '0' && c !== 0 && c !== '');

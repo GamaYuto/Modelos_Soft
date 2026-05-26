@@ -6,11 +6,13 @@ BASE_URL = 'http://127.0.0.1:8000'
 
 
 def ejemplo_ping():
+    """Consulta el endpoint de salud para validar conectividad básica."""
     response = requests.get(f'{BASE_URL}/ping')
     print('PING:', response.status_code, response.json())
 
 
 def ejemplo_solve_max():
+    """Envía un caso de maximización y muestra la respuesta formateada."""
     payload = {
         'tipo': 'max',
         'objetivo': [3, 5],
@@ -26,6 +28,7 @@ def ejemplo_solve_max():
 
 
 def ejemplo_min():
+    """Envía un caso de minimización para validar restricciones mixtas."""
     payload = {
         'tipo': 'min',
         'objetivo': [1, 2],
@@ -41,6 +44,7 @@ def ejemplo_min():
 
 
 def ejemplo_infeasible():
+    """Ejecuta un caso infactible para validar detección de inconsistencia."""
     payload = {
         'tipo': 'max',
         'objetivo': [1, 1],
@@ -55,6 +59,7 @@ def ejemplo_infeasible():
 
 
 def main():
+    """Ejecuta la secuencia completa de ejemplos de integración API."""
     print('Ejemplo /ping')
     ejemplo_ping()
     print('\nEjemplo solución maximizacion')

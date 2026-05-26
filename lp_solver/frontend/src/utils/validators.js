@@ -1,7 +1,13 @@
+/**
+ * Valida si un valor puede convertirse de forma segura a número.
+ */
 export function isNumeric(value) {
   return value !== '' && value !== null && value !== undefined && !Number.isNaN(Number(value));
 }
 
+/**
+ * Valida tipo, dimensiones y método del modelo configurado en UI.
+ */
 export function validateModelConfig(config) {
   const errors = {};
   if (!['max', 'min'].includes(config.tipo)) {
@@ -22,6 +28,9 @@ export function validateModelConfig(config) {
   return errors;
 }
 
+/**
+ * Verifica coeficientes objetivo numéricos y evita vector objetivo nulo.
+ */
 export function validateObjective(objective) {
   const errors = {};
   const allZero = objective.every((value) => Number(value) === 0 || value === '' || value === null);
@@ -36,6 +45,9 @@ export function validateObjective(objective) {
   return errors;
 }
 
+/**
+ * Valida restricciones por fila: coeficientes, operador y lado derecho.
+ */
 export function validateRestrictions(restrictions, numVariables) {
   const errors = {};
   if (!Array.isArray(restrictions) || restrictions.length < 2) {
@@ -62,10 +74,16 @@ export function validateRestrictions(restrictions, numVariables) {
   return errors;
 }
 
+/**
+ * Indica si el mapa de errores contiene al menos una entrada.
+ */
 export function hasErrors(errors) {
   return Object.keys(errors).length > 0;
 }
 
+/**
+ * Normaliza datos del formulario al contrato esperado por `/solve`.
+ */
 export function buildSolverPayload(config, objective, restrictions) {
   return {
     tipo: config.tipo,

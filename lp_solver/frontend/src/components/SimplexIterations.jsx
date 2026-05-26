@@ -18,6 +18,9 @@ const LEAVING_KEYS = [
 ];
 
 function getFirstAvailableValue(source, keys) {
+  /**
+   * Busca el primer valor disponible entre varias claves posibles.
+   */
   if (!source || typeof source !== 'object') return null;
 
   for (const key of keys) {
@@ -30,12 +33,18 @@ function getFirstAvailableValue(source, keys) {
 }
 
 function formatMetaValue(value) {
+  /**
+   * Normaliza metadatos de iteración a texto renderizable.
+   */
   if (typeof value === 'number') return Number.isFinite(value) ? value.toString() : null;
   if (typeof value === 'string') return value.trim() || null;
   return null;
 }
 
 export default function SimplexIterations({ iteraciones, status }) {
+  /**
+   * Renderiza acordeones de iteraciones simplex y abre la tabla final óptima.
+   */
   const [openIndex, setOpenIndex] = useState(-1);
 
   useEffect(() => {

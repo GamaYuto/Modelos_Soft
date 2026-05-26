@@ -24,12 +24,18 @@ const STATUS_CONFIG = {
   },
 };
 
+/**
+ * Normaliza el formato numérico para tablas y métricas del solver.
+ */
 function formatearValor(valor) {
   if (valor === null || valor === undefined) return 'N/A';
   if (typeof valor === 'number') return valor.toFixed(2);
   return String(valor);
 }
 
+/**
+ * Renderiza una tabla simplex serializada por el backend.
+ */
 function renderTabla(tabla) {
   if (!Array.isArray(tabla) || tabla.length === 0) return null;
 
@@ -63,6 +69,9 @@ function renderTabla(tabla) {
   );
 }
 
+/**
+ * Presenta resumen, tablas e iteraciones de resultados del modelo.
+ */
 export default function ResultadoPanel({ result, loading, expanded, onToggle }) {
   if (loading) {
     return (

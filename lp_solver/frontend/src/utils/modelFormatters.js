@@ -1,3 +1,6 @@
+/**
+ * Formatea un término lineal con signo para visualización algebraica.
+ */
 function formatTerm(coef, index) {
   const value = Number(coef);
   if (Number.isNaN(value) || value === 0) return null;
@@ -7,6 +10,9 @@ function formatTerm(coef, index) {
   return `${sign} ${absValue}${variable}`;
 }
 
+/**
+ * Construye la línea textual de la función objetivo (Max/Min Z).
+ */
 export function formatObjective(tipo, objective) {
   const terms = objective
     .map((coef, index) => formatTerm(coef, index))
@@ -16,6 +22,9 @@ export function formatObjective(tipo, objective) {
   return `${tipo === 'min' ? 'Min' : 'Max'} Z = ${expression}`;
 }
 
+/**
+ * Construye la representación textual de una restricción lineal.
+ */
 export function formatRestriction(coeficientes, sentido, rhs) {
   const terms = coeficientes
     .map((coef, index) => formatTerm(coef, index))
@@ -25,6 +34,9 @@ export function formatRestriction(coeficientes, sentido, rhs) {
   return `${expression} ${sentido} ${rhs}`;
 }
 
+/**
+ * Genera el bloque completo de previsualización del modelo en UI.
+ */
 export function formatModelPreview(config, objective, restrictions) {
   const objectiveLine = formatObjective(config.tipo, objective.slice(0, config.numVariables));
   const restrictionLines = restrictions

@@ -1,5 +1,8 @@
 import { formatModelPreview } from '../utils/modelFormatters';
 
+/**
+ * Presenta una vista textual compacta del modelo construido en formulario.
+ */
 export default function ModelPreview({ config, objective, restrictions }) {
   const preview = formatModelPreview(config, objective, restrictions);
 

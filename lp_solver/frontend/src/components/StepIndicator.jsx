@@ -8,6 +8,9 @@ const STEPS = [
   { value: 4, label: 'Resolver' },
 ];
 
+/**
+ * Indica visualmente el progreso del usuario dentro del flujo por pasos.
+ */
 export default function StepIndicator({ currentStep }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

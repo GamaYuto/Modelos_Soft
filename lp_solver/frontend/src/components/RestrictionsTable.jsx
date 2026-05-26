@@ -6,6 +6,9 @@ const OPERATORS = [
   { value: '=', label: '=' },
 ];
 
+/**
+ * Renderiza y edita la matriz de restricciones con operadores y RHS.
+ */
 export default function RestrictionsTable({ restrictions, numVariables, onChange, errors }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">

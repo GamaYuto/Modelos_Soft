@@ -1,5 +1,8 @@
 import { Sparkles } from 'lucide-react';
 
+/**
+ * Renderiza botones rápidos para cargar ejemplos de modelado lineal.
+ */
 export default function EjemplosBotones({ examples, onSelect }) {
   return (
     <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">

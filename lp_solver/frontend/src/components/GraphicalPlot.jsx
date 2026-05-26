@@ -106,7 +106,7 @@ export default function GraphicalPlot({ graph, solution }) {
     return { viewBox: `0 0 ${svgWidth} ${svgHeight}`, padding, toSvgX, toSvgY, minX, maxX, minY, maxY, sortedVertices };
   }, [vertices, lines, validOptimalPoint]);
 
-  // Calcular posiciones de líneas dentro del rango visible
+  // Obtiene el segmento visible de una restricción dentro del viewport actual.
   const getLineSegment = (line) => {
     const { a, b, rhs } = line;
     const points = [];
@@ -139,6 +139,7 @@ export default function GraphicalPlot({ graph, solution }) {
     return unique.length >= 2 ? unique.slice(0, 2) : null;
   };
 
+  // Asigna color estable por índice de restricción para mejorar legibilidad.
   const lineColor = (operator, index) => {
     // Usar color único por índice de restricción
     const color = COLOR_PALETTE[index % COLOR_PALETTE.length];

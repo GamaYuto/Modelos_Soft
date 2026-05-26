@@ -1,3 +1,6 @@
+/**
+ * Componente de compatibilidad para listar y editar restricciones básicas.
+ */
 export default function RestriccionesList({
   restricciones,
   numVariables,

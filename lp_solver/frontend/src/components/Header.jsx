@@ -1,3 +1,6 @@
+/**
+ * Renderiza encabezado principal y contexto visual del solucionador.
+ */
 export default function Header() {
   return (
     <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">

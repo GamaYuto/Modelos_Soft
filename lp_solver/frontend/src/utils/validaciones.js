@@ -1,3 +1,6 @@
+/**
+ * Convierte y valida un valor numérico del formulario.
+ */
 export function validarNumero(valor, nombre) {
   if (valor === '' || valor === null || valor === undefined) {
     throw new Error(`${nombre} es obligatorio.`);
@@ -11,6 +14,9 @@ export function validarNumero(valor, nombre) {
   return numero;
 }
 
+/**
+ * Valida tipo, objetivo y restricciones antes de enviar al backend.
+ */
 export function validarFormulario(tipo, objetivo, restricciones) {
   if (!['max', 'min'].includes(tipo)) {
     throw new Error('Selecciona Maximizar o Minimizar.');

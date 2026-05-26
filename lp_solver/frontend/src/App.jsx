@@ -27,12 +27,18 @@ const INITIAL_CONFIG = {
   metodo: 'simplex',
 };
 
+/**
+ * Crea una restricción base según el número de variables del modelo.
+ */
 const buildEmptyRestriction = (numVariables) => ({
   coeficientes: Array.from({ length: numVariables }, () => '0'),
   sentido: '<=',
   lado_derecho: '0',
 });
 
+/**
+ * Inicializa el vector objetivo con valores por defecto en cero.
+ */
 const buildEmptyObjective = (numVariables) => Array.from({ length: numVariables }, () => '0');
 
 export default function App() {
@@ -72,10 +78,16 @@ export default function App() {
     setResult(null);
   }, [config, objective, restrictions]);
 
+  /**
+   * Actualiza campos de configuración global del modelo.
+   */
   const handleConfigChange = (field, value) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
   };
 
+  /**
+   * Actualiza el coeficiente objetivo de una variable específica.
+   */
   const handleObjectiveChange = (index, value) => {
     setObjective((prev) => {
       const next = [...prev];
@@ -84,6 +96,9 @@ export default function App() {
     });
   };
 
+  /**
+   * Actualiza coeficientes u operador/rhs de una restricción puntual.
+   */
   const handleRestrictionChange = (rowIndex, field, value, coefIndex = null) => {
     setRestrictions((prev) =>
       prev.map((restriction, index) => {
@@ -98,6 +113,9 @@ export default function App() {
     );
   };
 
+  /**
+   * Carga un caso de prueba en el formulario y limpia resultados previos.
+   */
   const handleTestCaseSelect = (testCase) => {
     setConfig({
       tipo: testCase.tipo,
@@ -113,16 +131,25 @@ export default function App() {
     setResult(null);
   };
 
+  /**
+   * Añade una restricción vacía respetando el máximo permitido en UI.
+   */
   const handleAddRestriction = () => {
     if (restrictions.length >= 4) return;
     setRestrictions((prev) => [...prev, buildEmptyRestriction(config.numVariables)]);
   };
 
+  /**
+   * Elimina una restricción por índice respetando el mínimo requerido.
+   */
   const handleRemoveRestriction = (index) => {
     if (restrictions.length <= 2) return;
     setRestrictions((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
   };
 
+  /**
+   * Ejecuta validaciones por paso del asistente y persiste errores.
+   */
   const validateStep = (step) => {
     if (step === 1) {
       const errors = validateModelConfig(config);
@@ -142,16 +169,25 @@ export default function App() {
     return true;
   };
 
+  /**
+   * Avanza al siguiente paso solo si la validación actual es correcta.
+   */
   const handleNextStep = () => {
     if (validateStep(currentStep)) {
       setCurrentStep((prev) => Math.min(prev + 1, 4));
     }
   };
 
+  /**
+   * Retrocede al paso anterior dentro de los límites del flujo.
+   */
   const handleBackStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  /**
+   * Valida, arma payload y consume backend para resolver el modelo lineal.
+   */
   const handleSubmit = async (event) => {
     if (event) event.preventDefault();
     const configErrors = validateModelConfig(config);

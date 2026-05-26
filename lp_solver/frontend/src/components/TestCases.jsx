@@ -1,3 +1,6 @@
+/**
+ * Lista casos de prueba predefinidos y notifica selección al contenedor.
+ */
 export default function TestCases({ cases, onSelect }) {
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">

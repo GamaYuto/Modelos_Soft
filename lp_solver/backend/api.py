@@ -9,18 +9,21 @@ from graphical_method import resolver_grafico
 
 
 class RestriccionInput(BaseModel):
+    """Esquema de una restricción lineal enviada por el frontend."""
     coeficientes: List[float] = Field(..., description='Coeficientes de la restricción')
     sentido: str = Field(..., description='Sentido de la restricción: "<=", ">=", "="')
     lado_derecho: float = Field(..., description='Término independiente (rhs)')
 
     @validator('sentido')
     def validar_sentido(cls, valor):
+        """Valida que el operador de restricción esté en el conjunto permitido."""
         if valor not in ('<=', '>=', '='):
             raise ValueError('El sentido debe ser "<=", ">=", o "=".')
         return valor
 
 
 class ProblemaInput(BaseModel):
+    """Esquema del problema de optimización recibido por la API."""
     tipo: str = Field(..., description='Tipo de problema: "max" o "min"')
     objetivo: List[float] = Field(..., description='Vector de costos objetivo')
     restricciones: List[RestriccionInput] = Field(..., description='Lista de restricciones')
@@ -28,6 +31,7 @@ class ProblemaInput(BaseModel):
 
     @validator('tipo')
     def validar_tipo(cls, valor):
+        """Normaliza y valida el tipo de optimización (max/min)."""
         valor_str = str(valor).strip().lower()
         if valor_str not in ('max', 'min'):
             raise ValueError('El tipo debe ser "max" o "min".')
@@ -35,6 +39,7 @@ class ProblemaInput(BaseModel):
     
     @validator('metodo')
     def validar_metodo(cls, valor):
+        """Establece el método por defecto y valida el método solicitado."""
         if valor is None:
             return 'simplex'
         valor_str = str(valor).strip().lower()
@@ -56,11 +61,13 @@ app.add_middleware(
 
 @app.get('/ping')
 def ping():
+    """Endpoint de salud para verificar disponibilidad del backend."""
     return {'message': 'pong'}
 
 
 @app.post('/solve')
 def solve(problema: ProblemaInput):
+    """Resuelve el modelo lineal usando simplex o método gráfico según el payload."""
     if not problema.objetivo:
         raise HTTPException(status_code=400, detail='El vector objetivo no puede estar vacío.')
 
@@ -75,6 +82,7 @@ def solve(problema: ProblemaInput):
                 ),
             )
 
+    # Convierte restricciones del esquema de entrada al formato del solver interno.
     restricciones_formato = []
     for restriccion in problema.restricciones:
         restricciones_formato.append(

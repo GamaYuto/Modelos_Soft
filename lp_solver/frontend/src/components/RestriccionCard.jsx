@@ -1,6 +1,9 @@
 import clsx from 'clsx';
 import { Trash2 } from 'lucide-react';
 
+/**
+ * Representa una fila editable de restricción con coeficientes y operador.
+ */
 export default function RestriccionCard({
   index,
   restriccion,

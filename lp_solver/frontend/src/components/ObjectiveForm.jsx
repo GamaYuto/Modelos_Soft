@@ -1,5 +1,8 @@
 import { formatObjective } from '../utils/modelFormatters';
 
+/**
+ * Captura y valida coeficientes de la función objetivo por variable.
+ */
 export default function ObjectiveForm({ objective, numVariables, onChange, errors, tipo }) {
   return (
     <section className="rounded-[1.75rem] bg-white p-6 shadow-lg">

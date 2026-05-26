@@ -35,3 +35,6 @@ Thumbs.db
 # Misc
 *.tmp
 *.bak
+
+__pycache__/
+*.pyc

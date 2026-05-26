@@ -36,6 +36,7 @@ def imprimir_tabla(tableau, rhs, row_names, col_names, objetivo=None, reducidos=
 
 
 def _normalizar_signo(signo):
+    """Normaliza variantes textuales de operador a <=, >= o =."""
     valor = str(signo).strip().lower()
     if valor in ('<=', '=<', 'le', 'menor o igual', 'menor_igual'):
         return '<='
@@ -47,10 +48,12 @@ def _normalizar_signo(signo):
 
 
 def _es_cero(valor):
+    """Evalúa cero numérico con tolerancia para evitar ruido de punto flotante."""
     return abs(valor) <= TOL
 
 
 def _prod(a, b):
+    """Encapsula multiplicación escalar para mantener consistencia en operaciones."""
     return a * b
 
 
@@ -130,6 +133,7 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
     artificial_indices = list(range(num_vars + slack_count, total_vars))
 
     def _calcular_reducidos_y_objetivo():
+        """Calcula costos reducidos y valor actual de Z a partir de la base activa."""
         m = len(tableau)
         n = total_vars
         basic_costs = [objective_coeffs[idx] for idx in basic_vars]
@@ -144,6 +148,7 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
         return reducidos, valor_objetivo
 
     def _pivotear(fila_pivote, col_pivote):
+        """Ejecuta una iteración de pivoteo: normaliza fila pivote y elimina columna."""
         pivote = tableau[fila_pivote][col_pivote]
         if _es_cero(pivote):
             raise ZeroDivisionError('Pivote igual a cero durante la operación de pivoteo.')
@@ -169,6 +174,7 @@ def resolver_simplex(tipo, c, restricciones, debug=False):
     multiple_solutions = False
 
     def _tabla_a_matriz(tableau, rhs, row_names, col_names, reducidos=None):
+        """Serializa la tabla simplex a matriz para renderizado en frontend."""
         header = ['Base', *col_names, 'RHS']
         rows = []
         for i, fila in enumerate(tableau):

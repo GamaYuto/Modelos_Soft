@@ -1,5 +1,8 @@
 import clsx from 'clsx';
 
+/**
+ * Gestiona selección de tipo, tamaño de modelo y método de resolución.
+ */
 export default function ModelConfig({ config, onChange, errors }) {
   const { tipo, numVariables, numRestricciones, metodo } = config;
 
