@@ -131,6 +131,28 @@ def _evaluar_objetivo(punto: Tuple[float, float], objetivo: List[float]) -> floa
     return objetivo[0] * punto[0] + objetivo[1] * punto[1]
 
 
+def _obtener_restricciones_activas(
+    punto: Tuple[float, float], restricciones: List[List[float]]
+) -> List[Dict[str, float]]:
+    """Identifica las restricciones que tocan el punto óptimo con igualdad."""
+    activas = []
+    x1, x2 = punto
+
+    for index, restriccion in enumerate(restricciones):
+        coef1, coef2, operador, rhs = restriccion
+        lhs = coef1 * x1 + coef2 * x2
+        if _son_iguales(lhs, rhs):
+            activas.append({
+                'index': index,
+                'label': f'R{index + 1}: {coef1:.0f}x1 + {coef2:.0f}x2 = {rhs:.0f}',
+                'lhs': round(lhs, 9),
+                'rhs': round(rhs, 9),
+                'operator': operador,
+            })
+
+    return activas
+
+
 def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]) -> Dict:
     """
     Resuelve un problema de programación lineal con 2 variables usando el método gráfico.
@@ -188,7 +210,14 @@ def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]
         'conclusion': '',
         'graph': {
             'vertices': [{'x': round(p[0], 9), 'y': round(p[1], 9)} for p in puntos_factibles],
+            'vertexValues': [],
             'optimalPoint': None,
+            'objectiveFunction': {
+                'coefficients': [round(valor, 9) for valor in c],
+                'type': tipo_str,
+            },
+            'optimizationDirection': None,
+            'activeConstraints': [],
             'lines': [
                 {
                     'label': f"{r[0]:.0f}x1 + {r[1]:.0f}x2 {r[2]} {r[3]:.0f}",
@@ -213,6 +242,15 @@ def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]
     for punto in puntos_factibles:
         valor = _evaluar_objetivo(punto, c)
         evaluaciones.append((valor, punto))
+
+    resultado['graph']['vertexValues'] = [
+        {
+            'x': round(punto[0], 9),
+            'y': round(punto[1], 9),
+            'z': round(valor, 9),
+        }
+        for valor, punto in evaluaciones
+    ]
     
     # Buscar óptimo
     if tipo_str == 'max':
@@ -248,6 +286,17 @@ def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]
         'x': round(punto_optimo[0], 9),
         'y': round(punto_optimo[1], 9),
     }
+    magnitud = (c[0] ** 2 + c[1] ** 2) ** 0.5
+    if not _es_cero(magnitud):
+        resultado['graph']['optimizationDirection'] = {
+            'vector': [round(c[0] / magnitud, 9), round(c[1] / magnitud, 9)],
+            'raw': [round(c[0], 9), round(c[1], 9)],
+            'sense': tipo_str,
+        }
+    resultado['graph']['activeConstraints'] = _obtener_restricciones_activas(
+        punto_optimo,
+        restricciones_normalizadas,
+    )
     resultado['multiple_solutions'] = multiple_solutions
     
     return resultado
