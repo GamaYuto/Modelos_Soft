@@ -96,7 +96,3 @@ Después de iniciar el servidor, abrir la URL que indique Vite, normalmente `htt
 3. Ingresar el tipo de problema, la función objetivo y las restricciones.
 4. Presionar `Resolver`.
 5. Revisar resultados y, si está disponible, desplegar las tablas del Simplex.
-
-## Declaración de uso de IA
-
-Este proyecto utilizó a Rapto mini como asistente para generar partes del código según las indicaciones del equipo.
