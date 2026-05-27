@@ -18,7 +18,8 @@ export default function ObjectiveForm({ objective, numVariables, onChange, error
           <label key={index} className="flex flex-col gap-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
             <span className="text-sm font-medium text-slate-700">x{index + 1}</span>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="any"
               value={objective[index] ?? '0'}
               onChange={(event) => onChange(index, event.target.value)}

@@ -1,6 +1,37 @@
 import clsx from 'clsx';
 import { Trash2 } from 'lucide-react';
 
+const TERM_SIGNS = [
+  { value: '+', label: '+' },
+  { value: '-', label: '-' },
+];
+
+function splitSignedCoefficient(value) {
+  const rawValue = String(value ?? '').trim();
+
+  if (!rawValue) {
+    return { sign: '+', magnitude: '' };
+  }
+
+  if (rawValue === '-') {
+    return { sign: '-', magnitude: '' };
+  }
+
+  const sign = rawValue.startsWith('-') ? '-' : '+';
+  const magnitude = rawValue.replace(/^[+-]/, '');
+  return { sign, magnitude };
+}
+
+function composeSignedCoefficient(sign, magnitude) {
+  const normalizedMagnitude = String(magnitude ?? '').trim().replace(/^[+-]/, '');
+
+  if (!normalizedMagnitude) {
+    return sign === '-' ? '-' : '';
+  }
+
+  return sign === '-' ? `-${normalizedMagnitude}` : normalizedMagnitude;
+}
+
 /**
  * Representa una fila editable de restricción con coeficientes y operador.
  */
@@ -42,13 +73,27 @@ export default function RestriccionCard({
             {restriccion.coeficientes.map((valor, coefIndex) => (
               <label key={coefIndex} className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-slate-600">x{coefIndex + 1}</span>
-                <input
-                  type="number"
-                  step="any"
-                  value={valor}
-                  onChange={(event) => onChange(index, 'coef', event.target.value, coefIndex)}
-                  className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={splitSignedCoefficient(valor).sign}
+                    onChange={(event) => onChange(index, 'coef', composeSignedCoefficient(event.target.value, splitSignedCoefficient(valor).magnitude), coefIndex)}
+                    className="w-16 rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500"
+                    aria-label={`Signo de x${coefIndex + 1} en restricción ${index + 1}`}
+                  >
+                    {TERM_SIGNS.map((termSign) => (
+                      <option key={termSign.value} value={termSign.value}>
+                        {termSign.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    step="any"
+                    value={splitSignedCoefficient(valor).magnitude}
+                    onChange={(event) => onChange(index, 'coef', composeSignedCoefficient(splitSignedCoefficient(valor).sign, event.target.value), coefIndex)}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500"
+                  />
+                </div>
               </label>
             ))}
           </div>
@@ -68,7 +113,7 @@ export default function RestriccionCard({
 
           <label className="block text-sm font-medium text-slate-700">Lado derecho</label>
           <input
-            type="number"
+            type="text"
             step="any"
             value={restriccion.lado_derecho}
             onChange={(event) => onChange(index, 'lado_derecho', event.target.value)}

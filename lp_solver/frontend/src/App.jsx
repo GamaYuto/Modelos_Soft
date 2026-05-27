@@ -8,7 +8,6 @@ import RestrictionsTable from './components/RestrictionsTable.jsx';
 import ModelPreview from './components/ModelPreview.jsx';
 import ModelSummary from './components/ModelSummary.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
-import SimplexIterations from './components/SimplexIterations.jsx';
 import TestCases from './components/TestCases.jsx';
 import { TEST_CASES } from './data/testCases.js';
 import { solveLP } from './api.js';
@@ -143,7 +142,7 @@ export default function App() {
    * Elimina una restricción por índice respetando el mínimo requerido.
    */
   const handleRemoveRestriction = (index) => {
-    if (restrictions.length <= 2) return;
+    if (restrictions.length <= 1) return;
     setRestrictions((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
   };
 
@@ -326,7 +325,6 @@ export default function App() {
           <aside className="space-y-5">
             <ResultsPanel result={result} />
             <ModelPreview config={config} objective={objective} restrictions={restrictions} />
-            <SimplexIterations iteraciones={result?.iteraciones} status={result?.status} />
           </aside>
         </div>
       </div>

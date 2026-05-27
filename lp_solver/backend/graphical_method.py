@@ -153,6 +153,57 @@ def _obtener_restricciones_activas(
     return activas
 
 
+def _direccion_factible_para_rayo(
+    direccion: Tuple[float, float], restricciones: List[List[float]]
+) -> bool:
+    """Verifica si una dirección mantiene factibilidad para avanzar indefinidamente."""
+    dx, dy = direccion
+
+    if dx < -TOL or dy < -TOL:
+      return False
+
+    if _es_cero(dx) and _es_cero(dy):
+        return False
+
+    for coef1, coef2, operador, _rhs in restricciones:
+        valor = coef1 * dx + coef2 * dy
+
+        if operador == '<=' and valor > TOL:
+            return False
+        if operador == '>=' and valor < -TOL:
+            return False
+        if operador == '=' and not _es_cero(valor):
+            return False
+
+    return True
+
+
+def _problema_es_no_acotado(
+    tipo: str,
+    objetivo: List[float],
+    restricciones: List[List[float]],
+) -> bool:
+    """Detecta si existe un rayo factible que mejora indefinidamente la función objetivo."""
+    candidatos = [(1.0, 0.0), (0.0, 1.0)]
+
+    for coef1, coef2, _operador, _rhs in restricciones:
+        if not _es_cero(coef1) or not _es_cero(coef2):
+            candidatos.append((coef2, -coef1))
+            candidatos.append((-coef2, coef1))
+
+    for dx, dy in candidatos:
+        if not _direccion_factible_para_rayo((dx, dy), restricciones):
+            continue
+
+        mejora = objetivo[0] * dx + objetivo[1] * dy
+        if tipo == 'max' and mejora > TOL:
+            return True
+        if tipo == 'min' and mejora < -TOL:
+            return True
+
+    return False
+
+
 def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]) -> Dict:
     """
     Resuelve un problema de programación lineal con 2 variables usando el método gráfico.
@@ -251,6 +302,12 @@ def resolver_grafico(tipo: str, c: List[float], restricciones: List[List[float]]
         }
         for valor, punto in evaluaciones
     ]
+
+    if _problema_es_no_acotado(tipo_str, c, restricciones_normalizadas):
+        resultado['status'] = 'unbounded'
+        resultado['conclusion'] = 'El problema es no acotado; la región factible permite mejorar la función objetivo indefinidamente.'
+        resultado['multiple_solutions'] = False
+        return resultado
     
     # Buscar óptimo
     if tipo_str == 'max':

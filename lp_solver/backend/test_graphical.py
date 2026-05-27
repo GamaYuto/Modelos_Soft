@@ -63,4 +63,23 @@ except Exception as e:
     print(f"Error: {e}")
     print()
 
+# Test 4: No acotado con restricción >= y no negatividad
+print("Test 4: Problema no acotado")
+tipo = "max"
+c = [3, 2]
+restricciones = [
+    [1, -1, ">=", 2],
+]
+
+try:
+    resultado = resolver_grafico(tipo, c, restricciones)
+    print(f"Status: {resultado['status']}")
+    print(f"Valor óptimo: {resultado['valor_optimo']}")
+    print(f"Conclusion: {resultado['conclusion']}")
+    assert resultado['status'] == 'unbounded'
+    print()
+except Exception as e:
+    print(f"Error: {e}")
+    print()
+
 print("Todos los tests completados!")

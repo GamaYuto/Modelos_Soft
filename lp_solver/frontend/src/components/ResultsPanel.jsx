@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import GraphicalPlot from './GraphicalPlot.jsx';
+import SimplexIterations from './SimplexIterations.jsx';
 
 const STATUS_MAP = {
   optimal: {
@@ -22,18 +23,10 @@ const STATUS_MAP = {
 };
 
 /**
- * Formatea una variable de decisión para mostrarla en el panel de resultados.
- */
-function formatVariableLine(index, value) {
-  const formatted = typeof value === 'number' ? value.toFixed(2) : value;
-  return `x${index + 1} = ${formatted}`;
-}
-
-/**
  * Muestra estado, solución óptima y salidas relevantes del backend.
  */
 export default function ResultsPanel({ result }) {
-  const [activeTab, setActiveTab] = useState('resumen');
+  const [activeTab, setActiveTab] = useState('summary');
 
   if (!result) {
     return (
@@ -47,9 +40,10 @@ export default function ResultsPanel({ result }) {
   const config = STATUS_MAP[statusKey] ?? STATUS_MAP.optimal;
   const Icon = config.icon;
   const hasMultiple = result.multiple_solutions || /múltiples/i.test(result.conclusion || '');
-  const isOptimal = statusKey === 'optimal';
+  const hasFiniteOptimalSolution = statusKey === 'optimal' && result.valor_optimo !== null && result.valor_optimo !== undefined;
 
   const variables = result.variables_opt ?? [];
+  const simplexIterations = result?.iteraciones || result?.iterations || [];
   
   // Normalizar datos de gráfica
   const graphData = result.graph || result.grafico || result.graph_data || null;
@@ -58,7 +52,7 @@ export default function ResultsPanel({ result }) {
   const objectiveFunction = graphData?.objectiveFunction || null;
   const method = result.method || result.metodo || 'simplex';
   const isGraphicalMethod = method === 'grafico' || method === 'graphical';
-  const hasIterations = result.iteraciones && result.iteraciones.length > 0;
+  const hasIterations = simplexIterations.length > 0;
 
   // Verificar si hay contenido de modelo
   const hasObjective = result.objetivo && result.objetivo.some(c => c !== 0 && c !== '0');
@@ -66,19 +60,19 @@ export default function ResultsPanel({ result }) {
 
   // Determinar qué tabs mostrar (dinámico)
   const tabs = [
-    { id: 'resumen', label: 'Resumen', icon: '📋' },
-    ...(graphData && isGraphicalMethod ? [{ id: 'grafica', label: 'Gráfica', icon: '📊' }] : []),
-    ...(hasObjective || hasConstraints ? [{ id: 'modelo', label: 'Modelo', icon: '⚙️' }] : []),
-    ...(hasIterations ? [{ id: 'iteraciones', label: 'Iteraciones', icon: '🔁' }] : []),
+    { id: 'summary', label: 'Resumen', icon: '📋' },
+    ...(graphData && isGraphicalMethod ? [{ id: 'graph', label: 'Gráfica', icon: '📊' }] : []),
+    ...(hasObjective || hasConstraints ? [{ id: 'model', label: 'Modelo', icon: '⚙️' }] : []),
+    ...(hasIterations ? [{ id: 'iterations', label: 'Iteraciones', icon: '🔁' }] : []),
   ];
 
   // Si el tab activo ya no existe, volver a Resumen
   if (!tabs.find(t => t.id === activeTab)) {
-    setActiveTab('resumen');
+    setActiveTab('summary');
   }
 
   return (
-    <aside className="xl:sticky xl:top-8 self-start w-full">
+    <aside className="self-start w-full xl:sticky xl:top-8">
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-lg">
           <div className="px-6 py-8">
@@ -106,10 +100,23 @@ export default function ResultsPanel({ result }) {
                 <p key={index} className="text-slate-300">
                   x<sub className="text-xs">{index + 1}</sub>
                   <span className="mx-2 text-slate-500">=</span>
-                  <span className="font-semibold text-emerald-300">{typeof valor === 'number' ? valor.toFixed(2) : valor}</span>
+                  <span className="font-semibold text-emerald-300">
+                    {hasFiniteOptimalSolution
+                      ? typeof valor === 'number'
+                        ? valor.toFixed(2)
+                        : valor
+                      : 'N/A'}
+                  </span>
                 </p>
               ))}
             </div>
+
+            {!hasFiniteOptimalSolution && (
+              <p className="mt-3 rounded-lg border border-amber-400/20 bg-white/5 px-3 py-2 text-xs leading-relaxed text-slate-300">
+                Estos valores corresponden al vector que devuelve el solver para mantener la estructura de la respuesta,
+                pero no representan una solución óptima real cuando el problema es {statusKey === 'unbounded' ? 'no acotado' : 'infactible'}.
+              </p>
+            )}
 
             {hasMultiple && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200">
@@ -141,10 +148,10 @@ export default function ResultsPanel({ result }) {
         </div>
 
         {/* Contenido del tab activo - flujo natural sin restricciones */}
-        <div className="p-4">
+        <div>
           {/* TAB: RESUMEN */}
-          {activeTab === 'resumen' && (
-            <div className="space-y-4">
+          {activeTab === 'summary' && (
+            <div className="space-y-4 p-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Información del problema</p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -173,8 +180,8 @@ export default function ResultsPanel({ result }) {
           )}
 
           {/* TAB: GRÁFICA */}
-          {activeTab === 'grafica' && graphData && isGraphicalMethod && (
-            <div className="space-y-4">
+          {activeTab === 'graph' && graphData && isGraphicalMethod && (
+            <div className="space-y-4 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Visualización 2D de la región factible</p>
               <GraphicalPlot graph={graphData} solution={result?.solucion} />
 
@@ -242,8 +249,8 @@ export default function ResultsPanel({ result }) {
           )}
 
           {/* TAB: MODELO */}
-          {activeTab === 'modelo' && (hasObjective || hasConstraints) && (
-            <div className="space-y-4">
+          {activeTab === 'model' && (hasObjective || hasConstraints) && (
+            <div className="space-y-4 p-4">
               {hasObjective && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Función objetivo</p>
@@ -271,17 +278,10 @@ export default function ResultsPanel({ result }) {
           )}
 
           {/* TAB: ITERACIONES */}
-          {activeTab === 'iteraciones' && hasIterations && (
-            <div>
+          {activeTab === 'iterations' && (
+            <div className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-3">Historial del algoritmo Simplex</p>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {result.iteraciones.map((iter, idx) => (
-                  <div key={idx} className="rounded-lg bg-slate-50 p-3 text-xs font-mono text-slate-900">
-                    <p className="font-semibold text-slate-700">Iteración {idx}</p>
-                    <p className="mt-1 text-slate-600">{JSON.stringify(iter).substring(0, 100)}...</p>
-                  </div>
-                ))}
-              </div>
+              <SimplexIterations iterations={simplexIterations} status={statusKey} />
             </div>
           )}
         </div>

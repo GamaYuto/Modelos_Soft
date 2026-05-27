@@ -82,7 +82,7 @@ export default function ModelConfig({ config, onChange, errors }) {
           <span className="text-sm font-semibold text-slate-700">Restricciones</span>
           <input
             type="number"
-            min="2"
+            min="1"
             max="4"
             value={numRestricciones}
             onChange={(event) => onChange('numRestricciones', Number(event.target.value))}

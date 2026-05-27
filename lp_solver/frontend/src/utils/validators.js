@@ -16,8 +16,8 @@ export function validateModelConfig(config) {
   if (typeof config.numVariables !== 'number' || config.numVariables < 2 || config.numVariables > 4) {
     errors.numVariables = 'Debe haber entre 2 y 4 variables.';
   }
-  if (typeof config.numRestricciones !== 'number' || config.numRestricciones < 2 || config.numRestricciones > 4) {
-    errors.numRestricciones = 'Debe haber entre 2 y 4 restricciones.';
+  if (typeof config.numRestricciones !== 'number' || config.numRestricciones < 1 || config.numRestricciones > 4) {
+    errors.numRestricciones = 'Debe haber entre 1 y 4 restricciones.';
   }
   if (!['simplex', 'grafico'].includes(config.metodo)) {
     errors.metodo = 'Selecciona un método válido.';
@@ -50,8 +50,8 @@ export function validateObjective(objective) {
  */
 export function validateRestrictions(restrictions, numVariables) {
   const errors = {};
-  if (!Array.isArray(restrictions) || restrictions.length < 2) {
-    errors.restrictions = 'Debe haber al menos 2 restricciones.';
+  if (!Array.isArray(restrictions) || restrictions.length < 1) {
+    errors.restrictions = 'Debe haber al menos 1 restricción.';
     return errors;
   }
   restrictions.forEach((restriction, rowIndex) => {
